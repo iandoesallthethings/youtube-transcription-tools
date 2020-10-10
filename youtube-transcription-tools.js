@@ -11,19 +11,18 @@
 // @require      https://code.jquery.com/jquery-3.4.1.min.js
 // @require      https://code.jquery.com/ui/1.12.1/jquery-ui.min.js
 // ==/UserScript==
+
 // SUPER Hacky jQueryUI and CSS injection
-$('head').append(
-    '<link ' +
-      'href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.min.css" ' +
-      'rel="stylesheet" type="text/css">' +
-      `
-  <style>
-  table {
+const css = `
+<link href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.min.css" rel="stylesheet" type="text/css" />
+<style>
+  table, .box {
     border-collapse: collapse;
     margin: 10px;
   }
-  table, th, td {
+  table, th, td, .box {
     border: 1px solid black;
+    width: fit-content;
     padding: 5px;
     text-align: center;
   }
@@ -39,81 +38,141 @@ $('head').append(
     white-space: nowrap;
     vertical-align: baseline;
     border-radius: .25rem;
-  </style>
-  `
-  )
-  const ytplayer = document.getElementById('movie_player')
-  const jumpKeys = {
-    KeyQ: 0,
-    KeyW: 0,
-    KeyE: 0,
-    KeyR: 0
   }
-  const handleKeyPress = event => {
-    if (document.activeElement.id == 'contenteditable-root') return
-    if (document.activeElement.id == 'search') return
-    if (event.code === 'Backquote')
-      $('#dialog').dialog('isOpen')
-        ? $('#dialog').dialog('close')
-        : $('#dialog').dialog('open')
-    if (Object.keys(jumpKeys).includes(event.code)) {
-      event.shiftKey
-        ? (jumpKeys[event.code] = ytplayer.getCurrentTime())
-        : ytplayer.seekTo(jumpKeys[event.code])
-    }
-    if (event.code === "KeyA") ytplayer.setPlaybackRate(ytplayer.getPlaybackRate() - 0.1)
-    if (event.code === "KeyS") ytplayer.setPlaybackRate(1)
-    if (event.code === "KeyD") ytplayer.setPlaybackRate(ytplayer.getPlaybackRate() + 0.1)
-    updateDialog()
+</style>
+`
+
+const dialogBoxHtml = `
+<div id='dialog' title='Youtube Transcription Tools'>
+  <h4>Cues</h4>
+  <p>
+    <span class='badge'>Shift + Cue Key</span>
+    <span>: Set cue</span>
+  </p>
+  <p>
+    <span class='badge'>Cue Key</span>
+    <span>: jump to cue</span>
+  </p>
+  <table class='cuePointTable'>
+    <tr id='cueLabelRow' />
+    <tr id='cuePointRow' />
+  </table>
+
+  <h4>Playback Speed</h4>
+  <p>
+    <span class='badge'>A</span>
+    <span class='badge'>S</span>
+    <span class='badge'>D</span>
+    <span>: Decrease, Reset, Increase playback speed</span>
+  </p>
+  <div class="box" id="currentPlaybackSpeed" />
+    
+  <h4>Misc</h4>
+  <p><span class='badge'>\`</span>: Toggle menu </p>
+</div>
+`
+
+// Setup
+let ytplayer
+const init = () => {
+  // Check if we're not on a watch page
+  if (!document.getElementById("movie_player")) {
+    console.log("No player found.")
+    return
   }
-  const updateDialog = () => {
-    $('#currentPlaybackSpeed').empty()
-    $('#currentPlaybackSpeed').append(`
-      <table><tr><td>${ytplayer.getPlaybackRate()}</td></tr></table>
-    `)
-    $('#jumpKeys').empty()
-    $('#jumpKeys').append(`
-    <table class='jumpKeyTable'>
-      <tr>
-         <td>Q</td>
-         <td>W</td>
-         <td>E</td>
-         <td>R</td>
-      </tr>
-      <tr>
-        <td>${Math.floor(jumpKeys.KeyQ)}</td>
-        <td>${Math.floor(jumpKeys.KeyW)}</td>
-        <td>${Math.floor(jumpKeys.KeyE)}</td>
-        <td>${Math.floor(jumpKeys.KeyR)}</td>
-      </tr>
-    </table>
-  `)
-  }
-  // Attach dialog to page
-  $('body').append(`
-  <div id='dialog' title='Youtube Transcription Tools'>
-    <h4>Cues</h4>
-    <p><span class='badge'>Shift + Cue Key</span>: Set cue</p>
-    <p><span class='badge'>Cue Key</span>: jump to cue</p>
-    <div id='jumpKeys'></div>
-    <h4>Playback Speed</h4>
-    <p><span class='badge'>A</span><span class='badge'>S</span><span class='badge'>D</span>: Decrease, Reset, Increase playback speed</p>
-    <div id="currentPlaybackSpeed"></div>
-    <h4>Misc</h4>
-    <p><span class='badge'>\`</span>: Toggle menu </p>
-  </div>
-  `)
-  $(function() {
-    $('#dialog').dialog({
-      width: 200,
-      resizable: false,
-      position: {
-        my: 'left top',
-        at: 'left top+60'
-      },
-      autoOpen: false
-    })
-    updateDialog()
+
+  ytplayer = document.getElementById("movie_player")
+  // Inject Dom Stuff
+  $("head").append(css)
+  $("body").append(dialogBoxHtml)
+  $("#dialog").dialog({
+    width: 200,
+    resizable: false,
+    position: {
+      my: "left top",
+      at: "left top+60",
+    },
+    autoOpen: false,
   })
-  document.addEventListener('keydown', handleKeyPress)
-  console.log(`TYY Initialized`)
+
+  updateDialog()
+  console.log(`YTT Initialized`)
+}
+
+const updateDialog = () => {
+  $("#currentPlaybackSpeed").empty()
+  $("#currentPlaybackSpeed").append(ytplayer.getPlaybackRate())
+
+  $("#cueLabelRow").empty()
+  $("#cuePointRow").empty()
+  for (let keyCode in cuePoints) {
+    $("#cueLabelRow").append(`<td>${keyCode.slice(-1)[0]}</td>`)
+    $("#cuePointRow").append(`<td>${Math.floor(cuePoints[keyCode])}</td>`)
+  }
+}
+
+const toggleDialog = () =>
+  $("#dialog").dialog("isOpen")
+    ? $("#dialog").dialog("close")
+    : $("#dialog").dialog("open")
+
+// WIP: Saving cues to local storage per video :D
+/*
+localStorage.setItem("ytplayer", "Testing Local Storage from userscript! :D")
+const currentVideo = () => new URLSearchParams(window.location.search).get('v')
+
+const getLocalCues = () => localStorage.getItem(currentVideo())
+const getLocalCue = (keyCode) => localStorage.getItem(currentVideo())[keycode]
+const setLocalCue = (keyCode, timeCode) => {
+  const oldCues = getLocalCues()
+  oldCues[keyCode] = timeCode
+  localStorage.setItem(currentVideo(), oldCues)
+}
+*/
+
+const cuePoints = {
+  KeyQ: 0,
+  KeyW: 0,
+  KeyE: 0,
+  KeyR: 0,
+}
+
+const commands = {
+  Backquote: () => toggleDialog(),
+  KeyA: () => changeSpeed(-0.1),
+  KeyS: () => setSpeed(1),
+  KeyD: () => changeSpeed(0.1),
+  cue: (event) => {
+    if (cuePoints.hasOwnProperty(event.code))
+      event.shiftKey ? saveCue(event.code) : recallCue(event.code)
+  },
+}
+
+const saveCue = (keyCode) => (cuePoints[keyCode] = ytplayer.getCurrentTime())
+const recallCue = (keyCode) => ytplayer.seekTo(cuePoints[keyCode])
+
+const setSpeed = (speed) => ytplayer.setPlaybackRate(speed)
+const changeSpeed = (amount) =>
+  ytplayer.setPlaybackRate(ytplayer.getPlaybackRate() + amount)
+
+const handleKeyPress = (event) => {
+  // Ignore if focused on a text box
+  const textFields = ["search", "contenteditable-root"]
+  const focus = $(":focus").attr("id")
+  if (textFields.includes(focus)) return
+
+  // Check for proper initialization; Retry if broken
+  if (ytplayer === undefined) init()
+
+  // Execute
+  commands.hasOwnProperty(event.code)
+    ? commands[event.code](event)
+    : commands.cue(event) // Assumes anything else might be a cue
+
+  // Redraw
+  updateDialog()
+}
+
+// Do the things
+document.addEventListener("keydown", handleKeyPress)
+init()
