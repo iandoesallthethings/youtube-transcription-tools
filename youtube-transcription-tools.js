@@ -4,6 +4,7 @@
 // @version      0.2
 // @description  Set custom start points using quick key commands
 // @author       Ian Edwards
+// @icon         https://www.google.com/s2/favicons?domain=youtube.com
 // @match        http://www.youtube.com
 // @match        https://www.youtube.com
 // @match        http://www.youtube.com/watch?*
@@ -66,7 +67,7 @@ const dialogBoxHtml = `
     <span>: Decrease, Reset, Increase playback speed</span>
   </p>
   <div class="box" id="currentPlaybackSpeed" />
-    
+
   <h4>Misc</h4>
   <p><span class='badge'>\`</span>: Toggle menu </p>
 </div>
@@ -75,46 +76,44 @@ const dialogBoxHtml = `
 // Setup
 let ytplayer
 const init = () => {
-  // Check if we're not on a watch page
-  if (!document.getElementById("movie_player")) {
-    console.log("No player found.")
-    return
-  }
+	// Check if we're not on a watch page
+	if (!document.getElementById('movie_player')) {
+		console.log('No player found.')
+		return
+	}
 
-  ytplayer = document.getElementById("movie_player")
-  // Inject Dom Stuff
-  $("head").append(css)
-  $("body").append(dialogBoxHtml)
-  $("#dialog").dialog({
-    width: 200,
-    resizable: false,
-    position: {
-      my: "left top",
-      at: "left top+60",
-    },
-    autoOpen: false,
-  })
+	ytplayer = document.getElementById('movie_player')
+	// Inject Dom Stuff
+	$('head').append(css)
+	$('body').append(dialogBoxHtml)
+	$('#dialog').dialog({
+		width: 200,
+		resizable: false,
+		position: {
+			my: 'left top',
+			at: 'left top+60',
+		},
+		autoOpen: false,
+	})
 
-  updateDialog()
-  console.log(`YTT Initialized`)
+	updateDialog()
+	console.log(`YTT Initialized`)
 }
 
 const updateDialog = () => {
-  $("#currentPlaybackSpeed").empty()
-  $("#currentPlaybackSpeed").append(ytplayer.getPlaybackRate())
+	$('#currentPlaybackSpeed').empty()
+	$('#currentPlaybackSpeed').append(ytplayer.getPlaybackRate())
 
-  $("#cueLabelRow").empty()
-  $("#cuePointRow").empty()
-  for (let keyCode in cuePoints) {
-    $("#cueLabelRow").append(`<td>${keyCode.slice(-1)[0]}</td>`)
-    $("#cuePointRow").append(`<td>${Math.floor(cuePoints[keyCode])}</td>`)
-  }
+	$('#cueLabelRow').empty()
+	$('#cuePointRow').empty()
+	for (let keyCode in cuePoints) {
+		$('#cueLabelRow').append(`<td>${keyCode.slice(-1)[0]}</td>`)
+		$('#cuePointRow').append(`<td>${Math.floor(cuePoints[keyCode])}</td>`)
+	}
 }
 
 const toggleDialog = () =>
-  $("#dialog").dialog("isOpen")
-    ? $("#dialog").dialog("close")
-    : $("#dialog").dialog("open")
+	$('#dialog').dialog('isOpen') ? $('#dialog').dialog('close') : $('#dialog').dialog('open')
 
 // WIP: Saving cues to local storage per video :D
 /*
@@ -131,48 +130,45 @@ const setLocalCue = (keyCode, timeCode) => {
 */
 
 const cuePoints = {
-  KeyQ: 0,
-  KeyW: 0,
-  KeyE: 0,
-  KeyR: 0,
+	KeyQ: 0,
+	KeyW: 0,
+	KeyE: 0,
+	KeyR: 0,
 }
 
 const commands = {
-  Backquote: () => toggleDialog(),
-  KeyA: () => changeSpeed(-0.1),
-  KeyS: () => setSpeed(1),
-  KeyD: () => changeSpeed(0.1),
-  cue: (event) => {
-    if (cuePoints.hasOwnProperty(event.code))
-      event.shiftKey ? saveCue(event.code) : recallCue(event.code)
-  },
+	Backquote: () => toggleDialog(),
+	KeyA: () => changeSpeed(-0.1),
+	KeyS: () => setSpeed(1),
+	KeyD: () => changeSpeed(0.1),
+	cue: (event) => {
+		if (cuePoints.hasOwnProperty(event.code))
+			event.shiftKey ? saveCue(event.code) : recallCue(event.code)
+	},
 }
 
 const saveCue = (keyCode) => (cuePoints[keyCode] = ytplayer.getCurrentTime())
 const recallCue = (keyCode) => ytplayer.seekTo(cuePoints[keyCode])
 
 const setSpeed = (speed) => ytplayer.setPlaybackRate(speed)
-const changeSpeed = (amount) =>
-  ytplayer.setPlaybackRate(ytplayer.getPlaybackRate() + amount)
+const changeSpeed = (amount) => ytplayer.setPlaybackRate(ytplayer.getPlaybackRate() + amount)
 
 const handleKeyPress = (event) => {
-  // Ignore if focused on a text box
-  const textFields = ["search", "contenteditable-root"]
-  const focus = $(":focus").attr("id")
-  if (textFields.includes(focus)) return
+	// Ignore if focused on a text box
+	const textFields = ['search', 'contenteditable-root']
+	const focus = $(':focus').attr('id')
+	if (textFields.includes(focus)) return
 
-  // Check for proper initialization; Retry if broken
-  if (ytplayer === undefined) init()
+	// Check for proper initialization; Retry if broken
+	if (ytplayer === undefined) init()
 
-  // Execute
-  commands.hasOwnProperty(event.code)
-    ? commands[event.code](event)
-    : commands.cue(event) // Assumes anything else might be a cue
+	// Execute
+	commands.hasOwnProperty(event.code) ? commands[event.code](event) : commands.cue(event) // Assumes anything else might be a cue
 
-  // Redraw
-  updateDialog()
+	// Redraw
+	updateDialog()
 }
 
 // Do the things
-document.addEventListener("keydown", handleKeyPress)
+document.addEventListener('keydown', handleKeyPress)
 init()
